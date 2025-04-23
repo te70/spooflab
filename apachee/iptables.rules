@@ -1,0 +1,12 @@
+*filter
+# Allow established connections
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+# Allow loopback
+-A INPUT -i lo -j ACCEPT
+# Allow HTTP with rate limiting
+-A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+-A INPUT -p tcp --dport 80 -m limit --limit 10/min -j ACCEPT
+-A INPUT -p tcp --dport 80 -j DROP
+# Drop all other traffic
+-A INPUT -j DROP
+COMMIT

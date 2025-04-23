@@ -1,0 +1,109 @@
+services:
+  loki:
+    image: grafana/loki:latest
+    container_name: loki_2
+    hostname: loki
+    user: "root"
+    volumes:
+      - /var/lib/loki:/loki
+      - /var/lib/loki/rules:/loki/rules
+      - /var/lib/loki/chunks:/loki/chunks
+      - ./loki-config.yml:/etc/loki/loki-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    ports:
+      - "3102:3102"
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.12
+  
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail_2
+    user: "root"
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/promtail-config.yaml
+      - /conn.log:/conn.log
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    restart: unless-stopped
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.13
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_2
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    ports:
+      - "3002:3002"
+    restart: unless-stopped
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.14
+
+  kali:
+    build: ./kalii
+    container_name: kali_2
+    command: ["/bin/bash"]
+    stdin_open: true
+    tty: true
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.15
+
+  suricata:
+    image: jasonish/suricata
+    container_name: suricata_1
+    volumes:
+      - ./suricata.rules:/etc/suricata/rules/local.rules
+      - /var/log/suricata:/var/log/suricata
+      - /var/lib/suricata:/var/lib/suricata
+      - ./suricata-logs:/var/log/suricata
+    command: ["-i", "eth0"]
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+      - NET_RAW
+    network_mode: host
+
+  dionaea:
+    image: dinotools/dionaea
+    container_name: dionaea_1
+    ports:
+      - "8081:80"
+      - "33306:3306"
+      - "444:443"
+    volumes:
+      - ./dionaea/log:/var/dionaea/log
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.17
+    restart: always
+    
+  
+  apache:
+    build: ./apachee
+    container_name: apache_vuln
+    user: "root"  # Ensure it runs as root
+    privileged: true  # Grants full permissions (including iptables)
+    ports:
+      - "8080:80"
+    networks:
+      spooflab:
+        ipv4_address: 192.168.102.18
+
+networks:
+  spooflab:
+    name: spooflab
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.102.0/24
+
+volumes:
+  grafana-storage: {}
